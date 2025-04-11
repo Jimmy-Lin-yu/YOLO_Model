@@ -1,0 +1,22 @@
+# 忽略所有 .jpg、.pt、.txt 檔案
+*.jpg
+*.pt
+*.txt
+*.zip
+*.cfg
+
+# 若你要忽略所有子目錄中的這些檔案，也包含這些（其實上面三行就夠了，這裡只是顯式說明）
+**/*.jpg
+**/*.pt
+**/*.txt
+
+# 如果你有某些特定檔案想保留（例如 keep.txt），可以這樣排除忽略：
+#!keep.txt
+inference_image/
+lib/
+dataset/
+obb_runs/
+bin
+logs
+lib64
+
