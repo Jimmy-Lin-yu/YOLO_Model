@@ -4,6 +4,15 @@
 *.txt
 *.zip
 *.cfg
+*.png
+*.pth
+*.json
+*.yaml
+*.xml
+*.tar
+*.tar.gz
+*.tar.xz
+*.csv
 
 # 若你要忽略所有子目錄中的這些檔案，也包含這些（其實上面三行就夠了，這裡只是顯式說明）
 **/*.jpg

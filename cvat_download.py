@@ -12,114 +12,122 @@ class CVATDownloader:
         self.username = username
         self.password = password
         self.project_id = project_id
+        # 初始化 CVAT client
         self.client = make_client(host=self.host)
         self.client.login((self.username, self.password))
         self.project = self.client.projects.retrieve(self.project_id)
-        self.labels = {item.id: item.name for item in self.project.get_labels()}
+        # 取得標籤對照：CVAT label_id -> label_name
+        labels = {item.id: item.name for item in self.project.get_labels()}
+        # 建立 class_map：從 label_id 到連續的 class index
+        sorted_ids = sorted(labels.keys())
+        self.class_map = {lid: idx for idx, lid in enumerate(sorted_ids)}
+        self.labels = labels
+
+    def prepare_folders(self, dataset_name):
+        base_dir = os.path.join("dataset", dataset_name)
+        folders = [
+            os.path.join(base_dir, "Train", "images"),
+            os.path.join(base_dir, "Train", "labels"),
+            os.path.join(base_dir, "Test",  "images"),
+            os.path.join(base_dir, "Test",  "labels"),
+        ]
+        for folder in folders:
+            os.makedirs(folder, exist_ok=True)
+            print(f"資料夾已建立：{folder}")
 
     def download_data(self, dataset_name):
-        base_dir = os.path.join("dataset", dataset_name)
-        os.makedirs(base_dir, exist_ok=True)
-
         tasks = self.project.get_tasks()
         print(f"總共有 {len(tasks)} 個任務")
+
         for task in tasks:
             subset = task.subset
             if subset not in ("Train", "Test"):
                 print(f"未定義資料屬性，跳過 task.id: {task.id}")
                 continue
 
-            annotations = task.get_annotations()["shapes"]
-            print(f"任務 {task.id} 有 {len(annotations)} 個標注")
+            ann = task.get_annotations()["shapes"]
+            # 按影格分組
+            frames = {}
+            for shape in ann:
+                # 不過濾任何形狀類型，全部下載
+                frames.setdefault(shape.frame, []).append(shape)
 
-            frames_dict = {}
-            for shape in annotations:
-                frames_dict.setdefault(shape.frame, []).append(shape)
+            print(f"任務 {task.id} 共 {sum(len(v) for v in frames.values())} 個標註形狀")
 
-            for frame_idx, shapes in frames_dict.items():
+            for frame_idx, shapes in frames.items():
                 self._save_frame_and_label(task, frame_idx, shapes, subset, dataset_name)
 
-    def prepare_folders(self, dataset_name):
-        base_dir = os.path.join("dataset", dataset_name)
-        folders = [
-            os.path.join(base_dir, "Train", "images"),
-            os.path.join(base_dir, "Train", "labels"),  # ✅ 改為 labels
-            os.path.join(base_dir, "Test", "images"),
-            os.path.join(base_dir, "Test", "labels"),   # ✅ 改為 labels
-        ]
-        for folder in folders:
-            os.makedirs(folder, exist_ok=True)
-            print(f"資料夾已建立：{folder}")
-
     def _save_frame_and_label(self, task, frame_idx, shapes, subset, dataset_name):
+        # 讀取影格
         try:
             frame = self._decode_frame(task.get_frame(frame_idx))
         except Exception as e:
-            print(f"獲取任務 {task.id} 的幀 {frame_idx} 時出現錯誤: {str(e)}")
+            print(f"獲取任務 {task.id} 的幀 {frame_idx} 時出現錯誤: {e}")
             return
 
-        image_height, image_width = frame.shape[:2]
-        base_subset = os.path.join("dataset", dataset_name, subset)
-        image_path = os.path.join(base_subset, "images", f"{task.id}_{frame_idx}.jpg")
-        label_path = os.path.join(base_subset, "labels", f"{task.id}_{frame_idx}.txt")  # ✅ 改為 labels
+        h, w = frame.shape[:2]
+        base = os.path.join("dataset", dataset_name, subset)
+        img_path = os.path.join(base, "images", f"{task.id}_{frame_idx}.jpg")
+        lbl_path = os.path.join(base, "labels", f"{task.id}_{frame_idx}.txt")
 
-        print(f"保存圖像到: {image_path}")
-        cv2.imwrite(image_path, frame)
-
-        print(f"保存標注到: {label_path}")
-        with open(label_path, 'w') as f:
+        # 儲存圖片
+        cv2.imwrite(img_path, frame)
+        # 寫入標註 (一行 per shape)
+        with open(lbl_path, 'w') as f:
             for shape in shapes:
-                label_id = 0
-                #label_id = shape["label_id"]
-                points = shape['points']
-                normalized_points = [
-                    round(points[i] / (image_width if i % 2 == 0 else image_height), 5)
-                    for i in range(8)
-                ]
-                line = f"0 {' '.join(map(str, normalized_points))}\n"
+                lid = shape['label_id']
+                cls = self.class_map[lid]
+                pts = shape['points']  # 動態點列表
+                # normalize 所有點座標
+                norm = [round(coord / (w if idx % 2 == 0 else h), 6)
+                        for idx, coord in enumerate(pts)]
+                line = f"{cls} " + " ".join(map(str, norm)) + "\n"
                 f.write(line)
+        print(f"已儲存：{img_path} & {lbl_path}")
 
     def _decode_frame(self, frame_bytes):
-        return cv2.imdecode(np.frombuffer(frame_bytes.read(), np.uint8), cv2.IMREAD_COLOR)
-
-    def compress_dataset(self, dataset_name):
-        dataset_folder = os.path.join("dataset", dataset_name)
-        date_str = datetime.now().strftime("%Y%m%d")
-        zip_filename = f"{dataset_name}_{date_str}.zip"
-        zip_filepath = os.path.join("dataset", zip_filename)
-        print(f"開始壓縮 {dataset_folder} 到 {zip_filepath}")
-        with zipfile.ZipFile(zip_filepath, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for root, dirs, files in os.walk(dataset_folder):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    arcname = os.path.relpath(file_path, start=dataset_folder)
-                    zipf.write(file_path, arcname)
-        print(f"壓縮完成：{zip_filepath}")
+        return cv2.imdecode(
+            np.frombuffer(frame_bytes.read(), np.uint8),
+            cv2.IMREAD_COLOR
+        )
 
     def create_dataset_yaml(self, dataset_name):
-        yaml_path = os.path.join("dataset", dataset_name, "dataset.yaml")
+        # 建立 dataset.yaml，使用 Ultralytics YOLO segmentation 格式
+        base_path = os.path.abspath(os.path.join("dataset", dataset_name))
         yaml_dict = {
-            "train": f"/workspace/dataset/{dataset_name}/Train/images",
-            "val": f"/workspace/dataset/{dataset_name}/Test/images",
-            "nc": len(self.labels),
-            "names": list(self.labels.values())
+            'path': base_path,
+            'train': 'Train/images',
+            'val':   'Test/images',
+            'nc':    len(self.class_map),
+            'names': [self.labels[lid] for lid in sorted(self.class_map.keys())]
         }
-
-        with open(yaml_path, "w") as f:
+        yaml_path = os.path.join("dataset", dataset_name, "dataset.yaml")
+        with open(yaml_path, 'w') as f:
             yaml.dump(yaml_dict, f, default_flow_style=False, allow_unicode=True)
-
         print(f"已建立 dataset.yaml：{yaml_path}")
 
+    def compress_dataset(self, dataset_name):
+        folder = os.path.join("dataset", dataset_name)
+        date_str = datetime.now().strftime("%Y%m%d")
+        zip_name = f"{dataset_name}_{date_str}.zip"
+        zip_fp = os.path.join("dataset", zip_name)
+        with zipfile.ZipFile(zip_fp, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for r, d, files in os.walk(folder):
+                for file in files:
+                    fp = os.path.join(r, file)
+                    arc = os.path.relpath(fp, start=folder)
+                    zipf.write(fp, arc)
+        print(f"壓縮完成：{zip_fp}")
 
 if __name__ == '__main__':
-    host = "http://192.168.1.8:8080/"
-    username = "admin"    
+    host = "http://192.168.0.173:8080/"
+    username = "Jimmy"
     password = "301123350jIMMY"
     project_id = 1
     dataset_name = "YOLO_seg"
 
-    downloader = CVATDownloader(host, username, password, project_id)
-    downloader.prepare_folders(dataset_name)
-    downloader.download_data(dataset_name)
-    downloader.create_dataset_yaml(dataset_name)
-    downloader.compress_dataset(dataset_name)
+    dl = CVATDownloader(host, username, password, project_id)
+    dl.prepare_folders(dataset_name)
+    dl.download_data(dataset_name)
+    dl.create_dataset_yaml(dataset_name)
+    dl.compress_dataset(dataset_name)

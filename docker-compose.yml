@@ -2,11 +2,13 @@ version: "3.9"
 services:
   yolo-dev:
     build:
-      context: .
+      context: .           # 指向有 Dockerfile 的資料夾
       dockerfile: Dockerfile
+    runtime: nvidia   
+    image: yolo-dev:latest  # 可選：指定 build 完成後的映像名稱
     container_name: yolo-container
     volumes:
-      - .:/app  # 將當前目錄掛載進容器中
+      - .:/app               # 將當前目錄掛載進容器中
     working_dir: /app
     stdin_open: true
     tty: true
@@ -19,4 +21,5 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - DISPLAY=${DISPLAY}
-
+    # 如果使用 docker compose v2 的 runtime 方式，也可加上：
+    # runtime: nvidia

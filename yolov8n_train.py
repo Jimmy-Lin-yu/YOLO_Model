@@ -1,7 +1,7 @@
 from ultralytics import YOLO
 import time
 from datetime import datetime
-
+import torch
 import time
 import os
 from datetime import datetime
@@ -50,25 +50,30 @@ def run_with_timer(description, func, *args, log_file_path=None, **kwargs):
 
 
 def main():
-    # 載入模型設定（建立新的模型）
-    model = YOLO("yolov8n-obb.yaml")  # 使用 OBB 模型結構
-    print(f"模型目前使用的設備：{model.device}")
+    # 強制使用 GPU 0
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+
+    # 檢查 CUDA 是否可用
+    device = "cuda:0" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+
+    # 載入 segmentation 模型結構
+    model = YOLO("yolo11n-seg.yaml")
 
     # 訓練模型，並記錄花費時間
     results = run_with_timer(
-        "訓練 YOLOv8 OBB 模型",
+        "訓練 yolo11n-seg.pt 模型",
         model.train,
-        data="/workspace/dataset/YOLO_seg/dataset.yaml",  # 資料集的 .yaml 設定路徑
-        epochs=100,         # 訓練總次數
+        data="/app/dataset/YOLO_seg/dataset.yaml",  # 資料集的 .yaml 設定路徑
+        epochs=1000,         # 訓練總次數
         imgsz=640,         # 輸入圖像大小
         batch=16,          # 批次大小（可依 GPU 調整）
-        project="obb_runs",  # 存放訓練結果的資料夾
-        name="yolov8n-obb",  # 任務名稱
+        device=0,
+        project="seg_runs",  # 存放訓練結果的資料夾
+        name="yolo11n-seg",  # 任務名稱
         verbose=True         # 顯示詳細輸出
     )
 
-    # optional: 顯示訓練結果圖
-    results.plot()
 
 if __name__ == "__main__":
     main()
