@@ -22,10 +22,15 @@
 # 如果你有某些特定檔案想保留（例如 keep.txt），可以這樣排除忽略：
 #!keep.txt
 inference_image/
-lib/
+inference_folder/
 dataset/
+dataset_folder/
+lib/
 obb_runs/
 bin
 logs
 lib64
-
+.pyc
+# Compiled Python files
+*.pyc
+__pycache__/
