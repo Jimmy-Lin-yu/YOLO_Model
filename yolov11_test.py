@@ -46,8 +46,8 @@ def run_with_timer(tag, func, *args, **kwargs):
 def get_val_dirs_from_yaml(data_yaml):
     cfg = yaml.safe_load(open(data_yaml, 'r', encoding='utf-8'))
     base = cfg.get('path', '')
-    # img_dir = os.path.join(base, cfg.get('val') or cfg.get('validation') or cfg.get('val_dir'))
-    img_dir = os.path.join(base, cfg.get('train') or cfg.get('train') or cfg.get('train_dir'))
+    img_dir = os.path.join(base, cfg.get('val') or cfg.get('validation') or cfg.get('val_dir'))
+    # img_dir = os.path.join(base, cfg.get('train') or cfg.get('train') or cfg.get('train_dir'))
     # 若要改用 train，就把上面那行改掉
     assert img_dir and os.path.isdir(img_dir), f"val images 不存在：{img_dir}"
     lbl_dir = img_dir.replace(os.sep + 'images', os.sep + 'labels')
@@ -908,7 +908,7 @@ def plot_summary_from_log(csv_path, out_png_path):
 # ---------------------------
 def main():
     # 你自己的路徑
-    model_path = "/app/seg_runs/y11sseg_V2_251203/weights/best.pt"
+    model_path = "/app/seg_runs/y11sseg_V3_251203/weights/best.pt"
     data_yaml = "/app/dataset/YOLO_seg/dataset.yaml"
     out_dir = "/app/inference_image"
     os.makedirs(out_dir, exist_ok=True)

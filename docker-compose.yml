@@ -5,7 +5,7 @@ services:
       context: .           # 指向有 Dockerfile 的資料夾
       dockerfile: Dockerfile
     runtime: nvidia   
-    image: yolo-dev:latest  # 可選：指定 build 完成後的映像名稱
+    image: RD/yolo-dev:latest  # 可選：指定 build 完成後的映像名稱
     container_name: yolo-container
     volumes:
       - .:/app               # 將當前目錄掛載進容器中
@@ -23,3 +23,46 @@ services:
       - DISPLAY=${DISPLAY}
     # 如果使用 docker compose v2 的 runtime 方式，也可加上：
     # runtime: nvidia
+
+  hikvision_camera_platform:
+    container_name: hikvision_camera_platform
+    image: RD/yolo-dev:latest
+    restart: always
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app/AxisControl_LightingAuto
+    #shm
+    shm_size: '16gb'
+    volumes:
+      - /opt/MVS:/opt/MVS:ro
+      - ./hikvision_camera_platform:/app
+      - ./cache:/root/.cache
+    environment:
+      # GPU 可見性 (如有用到)
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MVCAM_COMMON_RUNENV=/opt/MVS/lib 
+      # Linker 載入 .so 目錄
+      - LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/bin:${LD_LIBRARY_PATH}
+      # 讓 Python 找到 MvCameraControl_class.py（MvImport 資料夾）
+      - PYTHONPATH=/opt/MVS/Samples/64/Python/MvImport:${PYTHONPATH}
+      # 可執行 MVS 工具
+      # - PATH=/opt/MVS/bin:${PATH}
+    ports:
+      - "7777:7777"
+    privileged: true 
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    # command: sleep 10000
+    command: python3 realtime_ui.py
+
+
+

@@ -114,7 +114,7 @@ def main():
 
     # 可調參數
     dataset_yaml = "/app/dataset/YOLO_seg/dataset.yaml"
-    epochs = 250
+    epochs = 20
     imgsz = 1024
     conf = 0.03
     iou = 0.45
@@ -126,11 +126,11 @@ def main():
     quick_dataset_sanity(dataset_yaml)
 
     # 模型（用預訓練權重）
-    model = YOLO("yolo11s-seg.pt")
+    model = YOLO("yolo11-seg.pt")
 
     # 訓練
     run_with_timer(
-        "訓練 yolo11s-seg.pt 模型",
+        "訓練 yolo11x-seg.pt 模型",
         model.train,
         data=dataset_yaml,
         epochs=epochs,
@@ -138,7 +138,7 @@ def main():
         batch=-1,
         device=0,
         project="seg_runs",
-        name="y11sseg_V2_251203",
+        name="y11sseg_V3_251203",
         # mosaic=1.0, mixup=0.0, close_mosaic=10,
         # translate=0.2, scale=0.5, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4,
         verbose=True

@@ -34,3 +34,6 @@ lib64
 # Compiled Python files
 *.pyc
 __pycache__/
+cache/
+*.log
+hikvision_camera_platform/AxisControl_LightingAuto/SW_SDK.dll
