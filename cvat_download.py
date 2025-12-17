@@ -541,7 +541,7 @@ if __name__ == '__main__':
     host = "http://192.168.0.5:8080/"
     username = "Jimmy"
     password = "301123350jIMMY"
-    project_id = 8
+    project_id = 10
     dataset_name = "YOLO_seg"
 
     dl = CVATDownloader(host, username, password, project_id,

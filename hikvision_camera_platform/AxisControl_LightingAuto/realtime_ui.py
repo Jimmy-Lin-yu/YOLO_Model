@@ -58,6 +58,11 @@ def toggle_camera(camera_on: bool) -> Tuple[bool, gr.Button, str]:
         try:
             with cam_lock:
                 cam = HikCamera(dev_index=0)
+                
+                # 🔸 一開相機就直接設定曝光 / 增益
+                cam.set_exposure_gain(3000.0, 8.0)
+                #  ↑ 這兩個數字就是你要的「曝光時間 μs」跟「增益」
+
             camera_on = True
             cam_btn_update = gr.update(
                 value="相機：開啟中",
@@ -105,7 +110,7 @@ def toggle_model(model_on: bool, camera_on: bool) -> Tuple[bool, gr.Button, str]
                         "載入YOLO模型",
                         YOLORealtimeInspector,
                         "/app/AxisControl_LightingAuto/best_251203.pt",   # ← 換成你的 best.pt 路徑
-                        conf=0.4,
+                        conf=0.8,
                         defect_classes=None  # 或 [0,1,...] 指定瑕疵 class
                     )
             model_on = True
@@ -183,17 +188,17 @@ def take_snapshot(camera_on: bool) -> str:
     return f"已儲存截圖：{path}"
 
 
-def set_default_exposure_gain(camera_on: bool) -> str:
-    """目前 UI 沒用到，可以留著備用。"""
-    global cam
-    if not camera_on or cam is None:
-        return "相機未開啟，無法設定曝光/增益"
-    with cam_lock:
-        try:
-            cam.set_exposure_gain(20000.0, 8.0)
-        except Exception as e:  # noqa: BLE001
-            return f"設定曝光/增益失敗：{e}"
-    return "已設定曝光 = 20000 μs, 增益 = 8.0"
+# def set_default_exposure_gain(camera_on: bool) -> str:
+#     """目前 UI 沒用到，可以留著備用。"""
+#     global cam
+#     if not camera_on or cam is None:
+#         return "相機未開啟，無法設定曝光/增益"
+#     with cam_lock:
+#         try:
+#             cam.set_exposure_gain(5000.0, 8.0)
+#         except Exception as e:  # noqa: BLE001
+#             return f"設定曝光/增益失敗：{e}"
+#     return "已設定曝光 = 20000 μs, 增益 = 8.0"
 
 
 # ---------- Gradio 介面 + 美編 ----------
@@ -394,7 +399,7 @@ def build_demo() -> gr.Blocks:
             )
 
             # Timer 連續更新影像
-            timer = gr.Timer(0.001, active=True)
+            timer = gr.Timer(0.05, active=True)
             timer.tick(
                 fn=stream_frame,
                 inputs=[camera_state, model_state],

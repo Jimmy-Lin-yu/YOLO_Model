@@ -21,7 +21,7 @@ class YOLORealtimeInspector:
                  conf: float = 0.5,
                  iou: float = 0.45,
                  defect_classes: list[int] | None = None,
-                 font_path: str = r"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"):
+                 font_path: str = r"/app/fonts/NotoSansCJK-Regular.ttc"):
         """
         :param weight_path: 訓練好的 best.pt 路徑
         :param device: 'cuda' 或 'cpu'，不給就自動偵測
