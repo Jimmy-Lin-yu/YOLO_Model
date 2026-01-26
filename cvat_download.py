@@ -542,7 +542,7 @@ if __name__ == '__main__':
     username = "Jimmy"
     password = "301123350jIMMY"
     project_id = 10
-    dataset_name = "YOLO_seg"
+    dataset_name = "YOLO_seg_26122"
 
     dl = CVATDownloader(host, username, password, project_id,
                         write_empty_label=True)

@@ -47,8 +47,6 @@ def get_val_dirs_from_yaml(data_yaml):
     cfg = yaml.safe_load(open(data_yaml, 'r', encoding='utf-8'))
     base = cfg.get('path', '')
     img_dir = os.path.join(base, cfg.get('val') or cfg.get('validation') or cfg.get('val_dir'))
-    # img_dir = os.path.join(base, cfg.get('train') or cfg.get('train') or cfg.get('train_dir'))
-    # 若要改用 train，就把上面那行改掉
     assert img_dir and os.path.isdir(img_dir), f"val images 不存在：{img_dir}"
     lbl_dir = img_dir.replace(os.sep + 'images', os.sep + 'labels')
     assert os.path.isdir(lbl_dir), f"val labels 不存在：{lbl_dir}"
@@ -112,12 +110,11 @@ def _load_instance_buckets(lbl_dir, image_path):
     支援幾種格式：
       1) ["0.2", "0.15", ...]
       2) [{"bucket": "0.2"}, {"bucket": "0.15"}, ...]
-      3) [{"attr": ">0.2", "bbox": [...], "label": "NG"}, ...]  ← 你現在的格式
+      3) [{"attr": ">0.2", "bbox": [...], "label": "NG"}, ...]
     """
     stem = os.path.splitext(os.path.basename(image_path))[0]
     base_dir = os.path.abspath(os.path.join(lbl_dir, os.pardir))
 
-    # 優先用 attrs_instances，其次 attrs（相容舊資料）
     for sub in ("attrs_instances", "attrs"):
         jf = os.path.join(base_dir, sub, stem + ".json")
         if os.path.isfile(jf):
@@ -129,13 +126,10 @@ def _load_instance_buckets(lbl_dir, image_path):
             if isinstance(data, list):
                 for item in data:
                     if isinstance(item, str):
-                        # 直接是一個 bucket 字串
                         buckets.append(item)
                     elif isinstance(item, dict):
-                        # 舊版：用 "bucket"
                         if "bucket" in item:
                             buckets.append(str(item["bucket"]))
-                        # 你現在這版：用 "attr"
                         elif "attr" in item:
                             buckets.append(str(item["attr"]))
             return buckets
@@ -161,8 +155,6 @@ def draw_four_points_from_gt_with_attrs(image_bgr, image_path, lbl_dir,
         return canvas
 
     H, W = canvas.shape[:2]
-
-    # 讀取 per-instance attrs（順序需與 label 每行一致）
     inst_attrs = _load_instance_buckets(lbl_dir, image_path)
 
     with open(lbl_path, "r", encoding="utf-8") as f:
@@ -186,21 +178,19 @@ def draw_four_points_from_gt_with_attrs(image_bgr, image_path, lbl_dir,
 
             x1, y1, x2, y2 = map(int, [x1, y1, x2, y2])
 
-            # 畫四角點
             for (x, y) in [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]:
                 cv2.circle(canvas, (x, y), r, point_color, thick)
 
-            # 取對應的 attr
             attr = inst_attrs[idx] if idx < len(inst_attrs) else ""
             tag = "NG" if not attr else f"NG | {attr}"
 
-            # 標在框上方，略往上移一點
             cv2.putText(canvas, tag,
                         (x1, max(0, y1 - 10)),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                         attr_color, 2, cv2.LINE_AA)
 
     return canvas
+
 
 # ---------------------------
 # 在圖上寫上檔名（紅字＋白色外框）
@@ -221,14 +211,12 @@ def compose_triptych_gt_vs_pred(image_bgr, result, image_path, data_yaml,
     H, W = image_bgr.shape[:2]
     _, lbl_dir = get_val_dirs_from_yaml(data_yaml)
 
-    # 中間：GT + attrs_instances
     mid = draw_four_points_from_gt_with_attrs(
         image_bgr, image_path, lbl_dir,
         point_color=(255, 0, 0),
         attr_color=(255, 0, 0)
     )
 
-    # 右邊：Pred box + 四角點（信心值只畫一次）
     right = image_bgr.copy()
     if getattr(result, "boxes", None) is not None and result.boxes is not None:
         b = result.boxes
@@ -247,14 +235,11 @@ def compose_triptych_gt_vs_pred(image_bgr, result, image_path, data_yaml,
                     label = f"NG {confs[i]:.2f}"
                 else:
                     label = f"{int(clss[i])} {confs[i]:.2f}"
-
-                # 只畫這一層文字，不讓 draw_pred_four_points 再畫一次
                 cv2.putText(right, label,
                             (x1, max(0, y1 - 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                             pred_txt_color, 2, cv2.LINE_AA)
 
-    # 這裡關掉 score，讓它只畫四角點，不再畫文字，避免重疊
     right = draw_pred_four_points(right, result, color=(0, 255, 0), with_score=False)
 
     pad = 10
@@ -347,7 +332,7 @@ def eval_image_level(model, data_yaml, conf=0.25, iou=0.5, imgsz=960, device=0, 
 def choose_device():
     os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
     if torch.cuda.is_available():
-        return 0  # Ultralytics 使用整數 index 表示 GPU
+        return 0
     return 'cpu'
 
 
@@ -515,7 +500,7 @@ def _iou_xyxy(a, b):
     iw, ih = max(0, ix2 - ix1), max(0, iy2 - iy1)
     inter = iw * ih
     area_a = (ax2 - ax1) * (ay2 - ay1)
-    area_b = (bx2 - bx1) * (by2 - by1)
+    area_b = (bx2 - bx1) * (by2 - by1)  # 修正：正確的 b 面積
     union = area_a + area_b - inter
     return inter / union if union > 0 else 0.0
 
@@ -665,16 +650,11 @@ def _boxes_from_label(lbl_dir, image_path, H, W):
 
 
 # ---------------------------
-# 產生三聯圖 + 同步寫 image-level log（你要的格式）
+# 產生三聯圖 + 同步寫 image-level log
 # ---------------------------
 def export_triptychs(model, data_yaml, out_dir,
                      log_txt_path=None,
                      conf=0.25, iou=0.5, imgsz=960, device=0):
-    """
-    每張圖：
-      1. 存三聯圖
-      2. 若 log_txt_path 不為 None，寫一行 image-level log
-    """
     os.makedirs(out_dir, exist_ok=True)
     img_dir, lbl_dir = get_val_dirs_from_yaml(data_yaml)
     paths = [p for p in sorted(glob.glob(os.path.join(img_dir, '*.*')))
@@ -698,7 +678,6 @@ def export_triptychs(model, data_yaml, out_dir,
         for *_, b in gts:
             if b in gt_cnt:
                 gt_cnt[b] += 1
-        # ★ 關鍵修改：有沒有標註 = 看 gts 長度，而不是 bucket 的數量
         gt_total = len(gts)
 
         # 2) 推論
@@ -724,7 +703,6 @@ def export_triptychs(model, data_yaml, out_dir,
         # 4) image-level log
         if log_txt_path is not None:
             if gt_total == 0:
-                # 沒有標註 → OK 圖
                 if not has_det:
                     line = f"{stem}.jpg  OK標註  推論結果: OK圖"
                 else:
@@ -732,7 +710,6 @@ def export_triptychs(model, data_yaml, out_dir,
             else:
                 gt_part = " ".join([f"{b}: {gt_cnt[b]}顆" for b in buckets])
                 if not has_det:
-                    # 有標註但完全沒偵測 → 全部遺漏
                     miss_part = "、".join(
                         [f"{b}: {gt_cnt[b]}顆" for b in buckets if gt_cnt[b] > 0]
                     ) or "無"
@@ -742,7 +719,6 @@ def export_triptychs(model, data_yaml, out_dir,
                         f"實際: 錯誤判斷-遺漏-:   {miss_part}"
                     )
                 else:
-                    # 有標註且至少偵測到一顆 → image-level 先視為正確
                     line = (
                         f"{stem}.jpg  NG標註: {gt_part}  |  "
                         f"推論結果:  有偵測到瑕疵   "
@@ -786,7 +762,6 @@ def export_instance_match_log(model, data_yaml, out_text_path, out_csv_path,
                           batch=1, stream=False, verbose=False, save=False,
                           retina_masks=False, half=use_half, amp=True, max_det=max_det)[0]
         preds_xyxy = _pred_to_bboxes(r)
-        # preds 不需要 bucket，因為 FP 只統計總數
         preds = [(x1, y1, x2, y2) for (x1, y1, x2, y2) in preds_xyxy]
 
         gt_cnt = {b: 0 for b in buckets}
@@ -819,7 +794,6 @@ def export_instance_match_log(model, data_yaml, out_text_path, out_csv_path,
             if gi not in used_g and g[4] in FNb:
                 FNb[g[4]] += 1
 
-        # FP：不用 bucket，只要總數
         FP_total = 0
         for pi, _ in enumerate(preds):
             if pi not in used_p:
@@ -865,6 +839,7 @@ def plot_summary_from_log(csv_path, out_png_path):
     TPb = {b: 0 for b in buckets}
     FNb = {b: 0 for b in buckets}
     FP_total = 0
+    FN_total = 0
 
     with open(csv_path, "r", encoding="utf-8") as f:
         r = _csv.DictReader(f)
@@ -872,32 +847,29 @@ def plot_summary_from_log(csv_path, out_png_path):
             for b in buckets:
                 TPb[b] += int(row[f"tp_{b}"])
                 FNb[b] += int(row[f"fn_{b}"])
-                FN_total = sum(FNb[b] for b in buckets)
+            FN_total = sum(FNb[b] for b in buckets)
             FP_total += int(row["fp_total"])
 
     x = np.arange(len(buckets))
     width = 0.35
     fig, ax = plt.subplots(figsize=(9, 6), dpi=130)
-    ax.bar(x - width / 2, [TPb[b] for b in buckets], width,
-           label='Correct (TP)')
-    ax.bar(x + width / 2, [FNb[b] for b in buckets], width,
-           label='Missed (FN)')
+    ax.bar(x - width / 2, [TPb[b] for b in buckets], width, label='Correct (TP)')
+    ax.bar(x + width / 2, [FNb[b] for b in buckets], width, label='Missed (FN)')
 
     ax.set_xticks(x)
     ax.set_xticklabels(buckets)
     ax.set_ylabel("Counts")
-    ax.set_title("")  # 用 suptitle 取代
+    ax.set_title("")
     ax.legend()
     ax.grid(axis='y', linestyle='--', alpha=0.35)
 
-    # 上方兩行標題
     fig.suptitle(
         f"Instance Matching Summary (Preview)\nTotal False Negatives: {FN_total}",
         fontsize=18
     )
 
     os.makedirs(os.path.dirname(out_png_path), exist_ok=True)
-    plt.tight_layout(rect=[0, 0, 1, 0.90])  # 留空給 suptitle
+    plt.tight_layout(rect=[0, 0, 1, 0.90])
     plt.savefig(out_png_path, bbox_inches="tight")
     plt.close(fig)
     print(f"已輸出統計圖：{out_png_path}")
@@ -908,10 +880,16 @@ def plot_summary_from_log(csv_path, out_png_path):
 # ---------------------------
 def main():
     # 你自己的路徑
-    model_path = "/app/seg_runs/y11sseg_V3_251203/weights/best.pt"
+    model_path = "/app/seg_runs/y11sseg_V1_251230/weights/best.pt"
     data_yaml = "/app/dataset/YOLO_seg/dataset.yaml"
     out_dir = "/app/inference_image"
     os.makedirs(out_dir, exist_ok=True)
+
+    # ✅ 中央化設定：只改這裡就能同步影響所有 predict/match
+    CONF      = 0.15     # 置信度閾值
+    IOU_PRED  = 0.25     # Ultralytics predict() 的 iou
+    IOU_MATCH = 0.50     # Instance-level 配對用的 iou_thr (固定 不影響推論結果)
+    IMG_SIZE  = 1024     # 推論輸入尺寸
 
     # 選擇裝置
     device = choose_device()
@@ -931,7 +909,7 @@ def main():
         export_triptychs,
         model, data_yaml, out_dir,
         triptych_log_txt,
-        conf=0.25, iou=0.5, imgsz=1024, device=device,
+        conf=CONF, iou=IOU_PRED, imgsz=IMG_SIZE, device=device,
     )
 
     # 2) Image-level NG/OK 整體指標
@@ -939,7 +917,7 @@ def main():
         "影像等級 NG/OK 指標",
         eval_image_level,
         model, data_yaml,
-        conf=0.25, iou=0.5, imgsz=1024, device=device,
+        conf=CONF, iou=IOU_PRED, imgsz=IMG_SIZE, device=device,
     )
 
     # 3) Image-level 混淆矩陣圖
@@ -948,19 +926,19 @@ def main():
         "Image-level 混淆矩陣",
         confusion_matrix_image_level,
         model, data_yaml, img_cm_path,
-        conf=0.25, iou=0.5, imgsz=1024, device=device,
+        conf=CONF, iou=IOU_PRED, imgsz=IMG_SIZE, device=device,
     )
 
-    # 4) Instance-level 混淆矩陣圖
+    # 4) Instance-level 混淆矩陣圖（注意：同時用到 IOU_MATCH 與 IOU_PRED）
     inst_cm_path = os.path.join(out_dir, "confmat_instance_level.png")
     run_with_timer(
         "Instance-level 混淆矩陣",
         confusion_matrix_instance_level,
         model, data_yaml, inst_cm_path,
-        iou_thr=0.5, conf=0.25, iou=0.5, imgsz=1024, device=device,
+        iou_thr=IOU_MATCH, conf=CONF, iou=IOU_PRED, imgsz=IMG_SIZE, device=device,
     )
 
-    # 5) 逐圖 instance match log + CSV
+    # 5) 逐圖 instance match log + CSV（同上）
     inst_txt = os.path.join(out_dir, "instance_match.log")
     inst_csv = os.path.join(out_dir, "instance_match.csv")
     run_with_timer(
@@ -968,7 +946,7 @@ def main():
         export_instance_match_log,
         model, data_yaml,
         inst_txt, inst_csv,
-        iou_thr=0.5, conf=0.25, iou=0.5, imgsz=1024, device=device,
+        iou_thr=IOU_MATCH, conf=CONF, iou=IOU_PRED, imgsz=IMG_SIZE, device=device,
     )
 
     # 6) 根據 CSV 畫總結圖

@@ -37,3 +37,8 @@ __pycache__/
 cache/
 *.log
 hikvision_camera_platform/AxisControl_LightingAuto/SW_SDK.dll
+hikvision_camera_platform/AxisControl_LightingAuto/常规控制器上位机.cs
+hikvision_camera_platform/AxisControl_LightingAuto/常规控制器上位机.designer.cs
+hikvision_camera_platform/AxisControl_LightingAuto/常规控制器上位机.resx
+hikvision_camera_platform/fonts/NotoSansCJK-Regular.ttc
+defect_inspection_prototype/SW_SDK.dll
