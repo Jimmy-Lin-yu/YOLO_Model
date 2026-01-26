@@ -75,10 +75,17 @@ class YOLORealtimeInspector:
     # 工具：把「模型預測」畫成四角點（放在 class 裡）
     # ---------------------------
     @staticmethod
-    def draw_pred_four_points(image_bgr, result, color=(0, 255, 0),
-                              r=6, thick=-1, with_score=True,
-                              custom_labels=None):
+    @staticmethod
+    def draw_pred_boxes(
+        image_bgr,
+        result,
+        color=(0, 255, 0),
+        box_thickness=3,
+        with_score=True,
+        custom_labels=None,
+    ):
         """
+        把預測畫成「框」(x1,y1,x2,y2) 而不是 4 個點
         custom_labels: list[str]，若提供，則用來取代原本的 cls:conf 顯示
         """
         canvas = image_bgr.copy()
@@ -114,13 +121,13 @@ class YOLORealtimeInspector:
             return canvas
 
         for i, (x1, y1, x2, y2) in enumerate(xyxy):
-            for (x, y) in [(x1, y1), (x2, y1), (x1, y2), (x2, y2)]:
-                cv2.circle(canvas, (x, y), r, color, thick)
+            # ✅ 畫成框
+            cv2.rectangle(canvas, (x1, y1), (x2, y2), color, thickness=box_thickness)
 
             if with_score:
                 label_text = None
 
-                # 優先使用自訂尺寸 label
+                # 優先使用自訂 label（例如你的尺寸分類）
                 if custom_labels is not None and i < len(custom_labels):
                     if custom_labels[i] is not None:
                         label_text = str(custom_labels[i])
@@ -130,11 +137,8 @@ class YOLORealtimeInspector:
                     label_text = f"{(int(cls[i]) if cls is not None else 0)}:{conf[i]:.2f}"
 
                 if label_text is not None:
-                                        
-                    font_scale = 0.9      # 字變大
-                    thickness = 3         # 線條變粗
-
-                    # 往右一點、稍微再往上一點
+                    font_scale = 0.9
+                    thickness = 3
                     label_x = x1 + 8
                     label_y = max(0, y1 - 10)
 
@@ -148,8 +152,9 @@ class YOLORealtimeInspector:
                         thickness,
                         cv2.LINE_AA,
                     )
-                    
+
         return canvas
+
 
 
     # ---------------------------
@@ -258,14 +263,24 @@ class YOLORealtimeInspector:
         # 計算瑕疵數量
         num_defect = self._count_defects(result)
 
+        # if num_defect == 0:
+        #     status = "OK"
+        #     text = "结果: OK"
+        #     color = (0, 255, 0)
+        # else:
+        #     status = "NG"
+        #     text = f"结果: NG 瑕疵{num_defect}顆"
+        #     color = (0, 0, 255)
+
         if num_defect == 0:
             status = "OK"
-            text = "结果: OK"
+            text = "Result: OK"
             color = (0, 255, 0)
         else:
             status = "NG"
-            text = f"结果: NG 瑕疵{num_defect}顆"
+            text = f"Result: NG {num_defect} defect(s)"
             color = (0, 0, 255)
+
 
         # ★ 先計算每顆瑕疵的尺寸區間
         size_info = self._analyze_defect_sizes(result)
@@ -276,7 +291,7 @@ class YOLORealtimeInspector:
 
 
         # 畫四角點
-        draw_img = self.draw_pred_four_points(
+        draw_img = self.draw_pred_boxes(
             frame_bgr,
             result,
             color=color,

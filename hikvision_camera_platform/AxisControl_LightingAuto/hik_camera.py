@@ -56,6 +56,32 @@ class HikCamera:
         img = self._get_frame(timeout_ms=timeout_ms)
         img.save(path, "JPEG")
         return str(Path(path).resolve())
+    
+    def clear_buffer(self, flush_n: int = 8, timeout_ms: int = 50):
+        """
+        嘗試清掉相機/SDK 內部影像 buffer。
+        1) 若 SDK 有 MV_CC_ClearImageBuffer() 就直接清
+        2) 否則 fallback：快速 grab N 幀把舊幀讀掉
+        """
+        if not self.cam:
+            return
+
+        # 1) 先試 SDK 的 clear buffer API
+        try:
+            if hasattr(self.cam, "MV_CC_ClearImageBuffer"):
+                ret = self.cam.MV_CC_ClearImageBuffer()
+                # ret == 0 通常代表成功
+                if ret == 0:
+                    return
+        except Exception:
+            pass
+
+        # 2) fallback：快速讀掉幾幀
+        for _ in range(max(0, flush_n)):
+            try:
+                _ = self._get_frame(timeout_ms=timeout_ms)
+            except Exception:
+                break
 
     def trigger_snapshot(self, out_dir: str = "snapshots", prefix: str = "shot") -> str:
         """
