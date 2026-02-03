@@ -138,7 +138,7 @@ def main():
         batch=-1,
         device=0,
         project="seg_runs",
-        name="y11sseg_26122_target",
+        name="y11sseg_26128_target",
         # mosaic=1.0, mixup=0.0, close_mosaic=10,
         # translate=0.2, scale=0.5, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4,
         verbose=True

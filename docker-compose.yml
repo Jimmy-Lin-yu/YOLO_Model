@@ -61,8 +61,46 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
-    # command: sleep 10000
-    command: python3 realtime_ui.py
+    #command: sleep 10000
+    # command: python3 realtime_ui_V1.py
+    # command: python3 realtime_ui._V2.py
+    command: python3 UI.py
 
-
-
+  defect_inspection_prototype:
+    container_name: defect_inspection_prototype
+    image: RD/yolo-dev:latest
+    restart: always
+    stdin_open: true
+    tty: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    working_dir: /app/defect_inspection_prototype
+    #shm
+    shm_size: '16gb'
+    volumes:
+      - /opt/MVS:/opt/MVS:ro
+      - ./defect_inspection_prototype:/app
+      - ./cache:/root/.cache
+    environment:
+      # GPU 可見性 (如有用到)
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MVCAM_COMMON_RUNENV=/opt/MVS/lib 
+      # Linker 載入 .so 目錄
+      - LD_LIBRARY_PATH=/opt/MVS/lib/64:/opt/MVS/bin:${LD_LIBRARY_PATH}
+      # 讓 Python 找到 MvCameraControl_class.py（MvImport 資料夾）
+      - PYTHONPATH=/opt/MVS/Samples/64/Python/MvImport:${PYTHONPATH}
+      # 可執行 MVS 工具
+      # - PATH=/opt/MVS/bin:${PATH}
+    ports:
+      - "7787:7787"
+    privileged: true 
+    network_mode: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [ gpu ]
+    command: sleep 10000

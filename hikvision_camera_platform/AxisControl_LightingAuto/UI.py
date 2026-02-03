@@ -41,11 +41,11 @@ BLACK_SIZE = (640, 480)
 # =========================
 EXPOSURE_US = 3000.0
 GAIN = 8.0
-YOLO_CONF = 0.2
+YOLO_CONF = 0.9
 TIMER_SEC = 0.05  # Timer tick interval (sec)
 
-YOLO_WEIGHT_PATH = "/app/AxisControl_LightingAuto/best_251230.pt"
-
+# YOLO_WEIGHT_PATH = "/app/AxisControl_LightingAuto/best_251230.pt"
+YOLO_WEIGHT_PATH = "/app/AxisControl_LightingAuto/best_target_capture.pt"
 
 # =========================
 # PLC cfg (給 PLCMode 用)  （名字保留不影響）

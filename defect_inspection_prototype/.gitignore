@@ -1,0 +1,8 @@
+__pycache__/camera_thread.cpython-310.pyc
+output_images/
+SW_SDK.dll
+__pycache__/
+MvSdkLog/
+*.pt
+*.log
+*.pyc
