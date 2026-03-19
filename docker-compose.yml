@@ -75,7 +75,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    working_dir: /app/defect_inspection_prototype
+    working_dir: /app
     #shm
     shm_size: '16gb'
     volumes:
@@ -103,4 +103,5 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
-    command: sleep 10000
+    command: python3 prototype_UI.py
+    #command: sleep 10000

@@ -200,6 +200,14 @@ class CameraThread:
         try:
             cam = self.cam_factory()
 
+            if self.target_fps is not None:
+                try:
+                    cam.set_fps(self.target_fps, enable=True)
+                    print(f"[CameraThread] cam_id={self.cam_id} set camera fps={self.target_fps}", flush=True)
+                except Exception as e:
+                    with self._lock:
+                        self._last_err = f"set_fps failed: {e}"
+
             if (self.init_exposure_us is not None) and (self.init_gain is not None):
                 try:
                     cam.set_exposure_gain(self.init_exposure_us, self.init_gain)

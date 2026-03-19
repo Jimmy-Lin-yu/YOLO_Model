@@ -33,13 +33,17 @@ def run_with_timer(description, func, *args, log_file_path=None, **kwargs):
     return result
 
 # ---------- 可重現性 ----------
-def set_seed(seed: int = 42):
-    random.seed(seed)
+
+# the science fiction classic book The Hitchhiker's Guide to the Galaxy by Douglas Adams. 
+# 42 is the infamous answer to the "Ultimate Question of Life, the Universe, and Everything"
+
+def set_seed(seed: int = 42): # 亂數產生器的起始值
+    random.seed(seed) 
     os.environ["PYTHONHASHSEED"] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
+    torch.manual_seed(seed)                    # 固定 PyTorch CPU 端 的亂數
+    torch.cuda.manual_seed_all(seed)           # 固定 PyTorch GPU 端 的亂數。
+    torch.backends.cudnn.deterministic = True  # 要求 cuDNN 盡量只用「每次跑都會得到同樣結果」的演算法
+    torch.backends.cudnn.benchmark = False     # 不要讓 cuDNN 自動去測試哪一種演算法最快
     print(f"🔒 已設定 random seed = {seed}（cudnn deterministic=True）")
 
 # ---------- 依賴：先確保 pycocotools 存在 ----------
@@ -138,11 +142,19 @@ def main():
         batch=-1,
         device=0,
         project="seg_runs",
-        name="y11sseg_26128_target",
+        name="y11sseg_26312",
         # mosaic=1.0, mixup=0.0, close_mosaic=10,
         # translate=0.2, scale=0.5, hsv_h=0.015, hsv_s=0.7, hsv_v=0.4,
         verbose=True
     )
+
+    # 判斷「真的有沒有吃到 CUDA / cuDNN」？
+    print("torch.cuda.is_available():", torch.cuda.is_available())
+    print("torch.cuda.device_count():", torch.cuda.device_count())
+    print("torch.cuda.get_device_name(0):", torch.cuda.get_device_name(0) if torch.cuda.is_available() else "N/A")
+    print("cuDNN enabled:", torch.backends.cudnn.enabled)
+    print("cuDNN benchmark:", torch.backends.cudnn.benchmark)
+    print("cuDNN deterministic:", torch.backends.cudnn.deterministic)
 
 if __name__ == "__main__":
     main()

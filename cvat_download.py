@@ -23,7 +23,7 @@ class CVATDownloader:
         self.username = username
         self.password = password
         self.project_id = project_id
-        self.write_empty_label = write_empty_label
+        self.write_empty_label = write_empty_label  #OK（無 shape）→ 空白標註
 
         # 初始化 CVAT client
         self.client = make_client(host=self.host)
@@ -541,7 +541,7 @@ if __name__ == '__main__':
     host = "http://192.168.0.5:8080/"
     username = "Jimmy"
     password = "301123350jIMMY"
-    project_id = 11
+    project_id = 8
     dataset_name = "YOLO_seg"
 
     dl = CVATDownloader(host, username, password, project_id,

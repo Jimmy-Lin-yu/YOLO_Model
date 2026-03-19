@@ -194,6 +194,7 @@ class SensorWorker:
             if now_wall - self._last_trigger_wall[cam_id] < self.cooldown_s:
                 continue
 
+            # 影像取得(從camerathread)
             frame_bgr, _ = self.cams[cam_id].get_latest_bgr_small()
             if frame_bgr is None:
                 frame_bgr, _ = self.cams[cam_id].get_latest_bgr()
@@ -325,7 +326,9 @@ class DefectWorker:
 
             t_snap1 = time.perf_counter()
 
-            snap_bgr = cv2.cvtColor(evt.mono_full, cv2.COLOR_GRAY2BGR) # 強制 sensor 與 defect 一定同一張
+            # 影像取得(從sensorthread)
+            # 強制 sensor 與 defect 一定同一張
+            snap_bgr = cv2.cvtColor(evt.mono_full, cv2.COLOR_GRAY2BGR) 
 
             # infer timing
             t_inf0 = time.perf_counter()
@@ -596,7 +599,7 @@ class UiOverlayWorker:
         h, w = bgr.shape[:2]
         text = f"Result: {p.status}  defects={p.num_defect}"
         org = (int(w * 0.05), int(h * 0.92))
-        cv2.putText(bgr, text, org, cv2.FONT_HERSHEY_SIMPLEX, 1.4, color, 3, cv2.LINE_AA)
+        cv2.putText(bgr, text, org, cv2.FONT_HERSHEY_SIMPLEX, 3, color, 6, cv2.LINE_AA)
         return bgr
 
     def _run(self):
@@ -631,7 +634,7 @@ class PipelineRuntime:
     def __init__(
         self,
         num_cams: int = 1,
-        target_fps: float = 15,
+        target_fps: float = 10,
         preview_cam_id: int = 0,
         persist_dir: str = "out_persist",
         serialize_per_cam: bool = True,   # ✅ 핵심：PLC done 才允許下一顆 sensor

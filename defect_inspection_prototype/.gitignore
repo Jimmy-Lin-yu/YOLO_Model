@@ -6,3 +6,6 @@ MvSdkLog/
 *.pt
 *.log
 *.pyc
+out_persist
+out_persist_S20_F10
+out_persist_S30_F10

@@ -18,7 +18,7 @@ SENSOR_WEIGHT = "/app/best_target_capture.pt"
 # -------- pipeline runtime (只留一份全域) --------
 runtime = PipelineRuntime(
     num_cams=1,          # UI demo 顯示 1 支；你要 5 支就改 5
-    target_fps=15,
+    target_fps=20,
     preview_cam_id=0,
     persist_dir="out_persist",
     serialize_per_cam=True,   # ✅ 確保：PLC(only) 完成後才進 next sensor
@@ -77,7 +77,7 @@ def toggle_model(model_on: bool, camera_on: bool) -> Tuple[bool, gr.Button, str]
                 defect_weight_path=DEFECT_WEIGHT,
                 sensor_conf=0.9,
                 sensor_iou=0.45,
-                defect_conf=0.3,
+                defect_conf=0.05,
                 defect_iou=0.45,
                 defect_imgsz= 1280,
                 # defect_imgsz=None, 

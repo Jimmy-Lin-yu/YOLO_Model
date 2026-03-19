@@ -61,6 +61,37 @@ class HikCamera:
         self.cam.MV_CC_SetFloatValue("ExposureTime", float(exposure_us))
         self.cam.MV_CC_SetFloatValue("Gain", float(gain))
 
+    def set_fps(self, fps: float, enable: bool = True):
+        """
+        Control camera-side FPS (GenICam nodes).
+        Works only if the camera supports these nodes.
+        """
+        self._check_thread()
+        if not self.cam:
+            raise RuntimeError("Camera not opened")
+
+        fps = float(fps)
+        if fps <= 0:
+            enable = False
+
+        # 1) enable/disable framerate control
+        try:
+            ret = self.cam.MV_CC_SetBoolValue("AcquisitionFrameRateEnable", bool(enable))
+            if ret != 0:
+                print(f"[HikCamera] Set AcquisitionFrameRateEnable failed 0x{ret:x}", flush=True)
+        except Exception as e:
+            print(f"[HikCamera] Set AcquisitionFrameRateEnable exception: {repr(e)}", flush=True)
+
+        # 2) set target fps
+        if enable:
+            try:
+                ret = self.cam.MV_CC_SetFloatValue("AcquisitionFrameRate", fps)
+                if ret != 0:
+                    print(f"[HikCamera] Set AcquisitionFrameRate={fps} failed 0x{ret:x}", flush=True)
+            except Exception as e:
+                print(f"[HikCamera] Set AcquisitionFrameRate exception: {repr(e)}", flush=True)
+            
+
     def grab_mono_np(self, timeout_ms: int = 3000) -> np.ndarray:
         """Return Mono8 numpy: (H,W) uint8"""
         return self._get_frame_mono_np(timeout_ms=timeout_ms)
