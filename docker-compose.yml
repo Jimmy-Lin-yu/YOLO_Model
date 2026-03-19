@@ -1,17 +1,18 @@
 version: "3.9"
 services:
-  yolo-dev:
+  model_train:
     build:
-      context: .           # 指向有 Dockerfile 的資料夾
+      context: .           
       dockerfile: Dockerfile
     runtime: nvidia   
     image: RD/yolo-dev:latest  # 可選：指定 build 完成後的映像名稱
-    container_name: yolo-container
+    container_name: model_train
+    working_dir: /app/Model_Train
     volumes:
-      - .:/app               # 將當前目錄掛載進容器中
-    working_dir: /app
-    stdin_open: true
-    tty: true
+      - ./Model_Train:/app/Model_Train
+      - ./cache:/root/.cache
+    stdin_open: true  # 允許容器保持開啟狀態，等待用戶輸入
+    tty: true         # 幫容器分配一個虛擬終端機（terminal）
     shm_size: '16gb'
     deploy:
       resources:
@@ -21,25 +22,24 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - DISPLAY=${DISPLAY}
-    # 如果使用 docker compose v2 的 runtime 方式，也可加上：
-    # runtime: nvidia
+    command: bash
 
   hikvision_camera_platform:
-    container_name: hikvision_camera_platform
-    image: RD/yolo-dev:latest
-    restart: always
-    stdin_open: true
-    tty: true
     build:
       context: .
       dockerfile: Dockerfile
-    working_dir: /app/AxisControl_LightingAuto
-    #shm
-    shm_size: '16gb'
+    runtime: nvidia
+    image: RD/yolo-dev:latest  
+    container_name: hikvision_camera_platform
+    working_dir: /app/hikvision_camera_platform
     volumes:
+      - ./hikvision_camera_platform:/app/hikvision_camera_platform
       - /opt/MVS:/opt/MVS:ro
-      - ./hikvision_camera_platform:/app
       - ./cache:/root/.cache
+    stdin_open: true
+    tty: true
+    restart: always
+    shm_size: '16gb'
     environment:
       # GPU 可見性 (如有用到)
       - NVIDIA_VISIBLE_DEVICES=all
@@ -61,27 +61,28 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
-    #command: sleep 10000
+    command: sleep 10000
     # command: python3 realtime_ui_V1.py
     # command: python3 realtime_ui._V2.py
-    command: python3 UI.py
+    # command: python3 UI.py
 
-  defect_inspection_prototype:
-    container_name: defect_inspection_prototype
-    image: RD/yolo-dev:latest
-    restart: always
-    stdin_open: true
-    tty: true
+  defect_inspection_prototype_x86:
     build:
       context: .
       dockerfile: Dockerfile
-    working_dir: /app
-    #shm
-    shm_size: '16gb'
+    runtime: nvidia
+    image: RD/yolo-dev:latest 
+    container_name: defect_inspection_prototype_x86
+    working_dir: /app/defect_inspection_prototype_x86
     volumes:
+      - ./defect_inspection_prototype_x86:/app/defect_inspection_prototype_x86
       - /opt/MVS:/opt/MVS:ro
-      - ./defect_inspection_prototype:/app
       - ./cache:/root/.cache
+    stdin_open: true
+    tty: true
+    restart: always
+    shm_size: '16gb'
+
     environment:
       # GPU 可見性 (如有用到)
       - NVIDIA_VISIBLE_DEVICES=all
@@ -103,5 +104,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [ gpu ]
-    command: python3 prototype_UI.py
-    #command: sleep 10000
+    # command: python3 prototype_UI.py
+    command: sleep 10000
+
